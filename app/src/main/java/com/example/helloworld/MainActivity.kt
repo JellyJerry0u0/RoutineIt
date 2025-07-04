@@ -33,7 +33,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
+// comment
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
     Surface(color = Color.Green) {
