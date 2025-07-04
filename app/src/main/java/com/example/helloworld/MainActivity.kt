@@ -16,20 +16,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.example.helloworld.ui.theme.HelloWorldTheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.example.helloworld.ui.navigation.AppNavigation
+import com.example.helloworld.ui.screen.TitleScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            HelloWorldTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
-            }
+            AppNavigation()
         }
     }
 }
@@ -43,6 +38,17 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
         )
     }
 }
+
+/*
+@Composable
+fun MyApp() {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = Color.White,
+    )
+}
+ */
+
 
 @Preview(showBackground = true)
 @Composable
