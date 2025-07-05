@@ -28,7 +28,7 @@ fun MainScreen() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = "routine",
+            startDestination = "camera",
             modifier = Modifier.padding(innerPadding)
         ) {
             composable("routine") { RoutineScreen() }
