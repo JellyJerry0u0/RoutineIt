@@ -1,0 +1,92 @@
+[
+  {
+    "name": "3대500클럽",
+    "description": "헬린이도 3대 500 도전해보자! 매주 3회 1시간 운동 인증",
+    "days": ["월", "수", "금"],
+    "time": "오후 1:00",
+    "participants": 14,
+    "category": "운동",
+    "isJoined": true
+  },
+  {
+    "name": "영어 단어장 만들기",
+    "description": "매일 영어 단어 30개 외우기",
+    "days": ["월", "수", "금", "일"],
+    "time": "오전 9:00",
+    "participants": 8,
+    "category": "공부",
+    "isJoined": false
+  },
+  {
+    "name": "아침 스트레칭",
+    "description": "매일 아침 10분 스트레칭",
+    "days": ["월", "화", "수", "목", "금"],
+    "time": "오전 7:00",
+    "participants": 12,
+    "category": "운동",
+    "isJoined": true
+  },
+  {
+    "name": "책 10페이지 읽기",
+    "description": "매일 책 10페이지 읽기",
+    "days": ["월", "화", "수", "목", "금", "토", "일"],
+    "time": "오전 8:00",
+    "participants": 9,
+    "category": "기타",
+    "isJoined": false
+  },
+  {
+    "name": "물 2L 마시기",
+    "description": "건강을 위해 매일 물 2L 마시기",
+    "days": ["월", "화", "수", "목", "금", "토", "일"],
+    "time": "오전 10:00",
+    "participants": 15,
+    "category": "기타",
+    "isJoined": true
+  },
+  {
+    "name": "저녁 산책",
+    "description": "저녁마다 30분 산책",
+    "days": ["월", "수", "금"],
+    "time": "오후 8:00",
+    "participants": 7,
+    "category": "운동",
+    "isJoined": false
+  },
+  {
+    "name": "코딩 연습",
+    "description": "매일 1시간 코딩 문제 풀기",
+    "days": ["월", "화", "수", "목", "금"],
+    "time": "오후 9:00",
+    "participants": 10,
+    "category": "공부",
+    "isJoined": true
+  },
+  {
+    "name": "일기 쓰기",
+    "description": "하루를 돌아보며 일기 쓰기",
+    "days": ["월", "화", "수", "목", "금", "토", "일"],
+    "time": "오후 10:00",
+    "participants": 6,
+    "category": "기타",
+    "isJoined": false
+  },
+  {
+    "name": "플랭크 3분",
+    "description": "매일 플랭크 3분 도전",
+    "days": ["월", "수", "금"],
+    "time": "오전 6:30",
+    "participants": 11,
+    "category": "운동",
+    "isJoined": true
+  },
+  {
+    "name": "명상",
+    "description": "아침 명상 15분",
+    "days": ["월", "화", "수", "목", "금"],
+    "time": "오전 6:00",
+    "participants": 13,
+    "category": "기타",
+    "isJoined": false
+  }
+] 
