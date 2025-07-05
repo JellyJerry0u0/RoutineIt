@@ -28,12 +28,12 @@ fun MainScreen() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = "home",
+            startDestination = "routine",
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable("home") { HomeScreen() }
-            composable("search") { SearchScreen() }
-            composable("profile") { ProfileScreen() }
+            composable("routine") { RoutineScreen() }
+            composable("camera") { CameraScreen() }
+            composable("diary") { DiaryScreen() }
         }
     }
 }

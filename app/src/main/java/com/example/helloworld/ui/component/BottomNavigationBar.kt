@@ -15,9 +15,9 @@ import androidx.compose.material.icons.filled.*
 @Composable
 fun BottomNavigationBar(navController: NavController) {
     val items = listOf(
-        BottomNavItem("home", "홈", Icons.Default.Home),
-        BottomNavItem("search", "검색", Icons.Default.Search),
-        BottomNavItem("profile", "내 정보", Icons.Default.Person)
+        BottomNavItem("routine", "루틴", Icons.Default.Home),
+        BottomNavItem("camera", "인증", Icons.Default.Search),
+        BottomNavItem("diary", "기록", Icons.Default.Person)
     )
 
     NavigationBar {

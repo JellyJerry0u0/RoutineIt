@@ -11,11 +11,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun SearchScreen() {
+fun DiaryScreen() {
     Box(
         modifier = Modifier.fillMaxSize().background(Color.White),
         contentAlignment = Alignment.Center
     ) {
-        Text("검색 화면", fontSize = 20.sp)
+        Text("내 정보 화면", fontSize = 20.sp)
     }
 }
