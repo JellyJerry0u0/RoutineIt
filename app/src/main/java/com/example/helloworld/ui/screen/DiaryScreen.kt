@@ -11,7 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun ProfileScreen() {
+fun DiaryScreen() {
     Box(
         modifier = Modifier.fillMaxSize().background(Color.White),
         contentAlignment = Alignment.Center
