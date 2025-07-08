@@ -32,6 +32,11 @@ import androidx.compose.ui.unit.sp
 import com.example.helloworld.ui.theme.Paperlogy
 import java.util.Calendar
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 
 @Composable
 fun CreateRoutineScreen(
@@ -42,26 +47,34 @@ fun CreateRoutineScreen(
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var days by remember { mutableStateOf(setOf<String>()) }
-    var showTimePicker by remember { mutableStateOf(false) }
+    var showCustomTimePicker by remember { mutableStateOf(false) }
+    var tempHour by remember { mutableStateOf(7) }
+    var tempMinute by remember { mutableStateOf(0) }
     var time by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    var amPm by remember { mutableStateOf(true) } // true: 오전, false: 오후
 
     val context = LocalContext.current
     val allDays = listOf("월", "화", "수", "목", "금", "토", "일")
     val categories = listOf("기상", "운동", "공부", "기타")
     val focusManager = LocalFocusManager.current
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 1) 배경 전용 레이어
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(Color.White)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) {
                     focusManager.clearFocus()
-                })
-            }
-    ) {
+                }
+        )
+
+        // 2) 실제 콘텐츠
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -154,57 +167,153 @@ fun CreateRoutineScreen(
             }
             Spacer(Modifier.height(18.dp))
 
-            // 시간 입력
+            // 시간 입력란 (커스텀)
             Text("시간", fontSize = 15.sp, fontWeight = FontWeight.Bold, fontFamily = Paperlogy)
             Spacer(Modifier.height(8.dp))
-            
-            val timePickerDialog = remember {
-                TimePickerDialog(
-                    context,
-                    { _, hour: Int, minute: Int ->
-                        Log.d("TimePicker", "Time selected: $hour:$minute")
-                        time = String.format("%02d:%02d", hour, minute)
-                        showTimePicker = false
-                    },
-                    Calendar.getInstance().get(Calendar.HOUR_OF_DAY),
-                    Calendar.getInstance().get(Calendar.MINUTE),
-                    true
-                ).apply {
-                    setOnCancelListener { 
-                        Log.d("TimePicker", "Dialog cancelled")
-                        showTimePicker = false 
-                    }
-                }
-            }
-            
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onTap = {
-                                Log.d("TimePicker", "Box tapped, showing dialog")
-                                showTimePicker = true
-                            }
-                        )
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFF5F5F5))
+                    .clickable {
+                        focusManager.clearFocus()
+                        showCustomTimePicker = true
                     }
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.CenterStart
             ) {
-                OutlinedTextField(
-                    value = time,
-                    onValueChange = {},
-                    readOnly = true,
-                    modifier = Modifier.fillMaxSize(),
-                    shape = RoundedCornerShape(12.dp),
-                    textStyle = androidx.compose.ui.text.TextStyle(fontFamily = Paperlogy, fontSize = 16.sp),
-                    placeholder = { Text(text = "시간을 선택하세요", fontFamily = Paperlogy) }
+                Text(
+                    text = if (time.isEmpty()) "시간을 선택하세요" else time,
+                    style = LocalTextStyle.current.copy(fontSize = 16.sp),
+                    color = if (time.isEmpty()) Color.Gray else Color.Black
                 )
             }
-            
-            LaunchedEffect(showTimePicker) {
-                if (showTimePicker) {
-                    Log.d("TimePicker", "LaunchedEffect triggered, showing dialog")
-                    timePickerDialog.show()
+
+            if (showCustomTimePicker) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(Color(0x88000000))
+                        .clickable(
+                            onClick = { showCustomTimePicker = false },
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        )
+                ) {
+                    Box(
+                        Modifier
+                            .align(Alignment.Center)
+                            // ② 연회색 1dp 테두리
+                            .border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(18.dp))
+                            // ③ 흰 배경
+                            .background(Color.White)
+                            // ④ 패딩은 그대로
+                            .padding(24.dp)
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("시간 선택", fontWeight = FontWeight.Bold, fontSize = 18.sp, fontFamily = Paperlogy)
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "닫기",
+                                    modifier = Modifier.clickable { showCustomTimePicker = false }
+                                )
+                            }
+                            Spacer(Modifier.height(16.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(start = 16.dp)) {
+                                // 시 DrumPicker
+                                DrumPicker(
+                                    items = (1..12).toList(),
+                                    selected = tempHour,
+                                    onSelected = {
+                                        tempHour = it
+                                        val ampmText = if (amPm) "오전" else "오후"
+                                        time = "$ampmText %02d:%02d".format(it, tempMinute)
+                                    }
+                                )
+                                Text(":", fontSize = 32.sp, modifier = Modifier.padding(horizontal = 8.dp))
+                                // 분 DrumPicker (더 오른쪽으로)
+                                Spacer(Modifier.width(24.dp))
+                                DrumPicker(
+                                    items = (0..59).toList(),
+                                    selected = tempMinute,
+                                    onSelected = {
+                                        tempMinute = it
+                                        val ampmText = if (amPm) "오전" else "오후"
+                                        time = "$ampmText %02d:%02d".format(tempHour, it)
+                                    }
+                                )
+                            }
+                            Spacer(Modifier.height(24.dp))
+                            // 오전/오후 버튼 Row (중앙 하단, 넓고 둥글게, 그림자X)
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(80.dp)
+                                        .height(50.dp)
+                                        .border(
+                                            width = 1.dp,
+                                            color = if (amPm) Color(0xFF90B4E6) else Color(0xFFE0E0E0),
+                                            shape = RoundedCornerShape(8.dp) // 더 사각지게
+                                        )
+                                        .background(
+                                            color = if (amPm) Color(0xFF90B4E6) else Color(0xFFF3F3F3),
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable {
+                                            amPm = true
+                                            time = "오전 %02d:%02d".format(tempHour, tempMinute)
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "오전",
+                                        fontFamily = Paperlogy,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp,
+                                        color = if (amPm) Color.White else Color(0xFF888888)
+                                    )
+                                }
+                                Spacer(Modifier.width(24.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .width(80.dp)
+                                        .height(50.dp)
+                                        .border(
+                                            width = 1.dp,
+                                            color = if (!amPm) Color(0xFF90B4E6) else Color(0xFFE0E0E0),
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .background(
+                                            color = if (!amPm) Color(0xFF90B4E6) else Color(0xFFF3F3F3),
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable {
+                                            amPm = false
+                                            time = "오후 %02d:%02d".format(tempHour, tempMinute)
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "오후",
+                                        fontFamily = Paperlogy,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp,
+                                        color = if (!amPm) Color.White else Color(0xFF888888)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
             Spacer(Modifier.height(18.dp))
@@ -311,6 +420,47 @@ fun CreateRoutineScreen(
             if (error != null) {
                 Spacer(Modifier.height(8.dp))
                 Text(error!!, color = Color.Red, fontSize = 13.sp, fontFamily = Paperlogy, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            }
+        }
+    }
+}
+
+@Composable
+fun DrumPicker(
+    items: List<Int>,
+    selected: Int,
+    onSelected: (Int) -> Unit
+) {
+    val listState = rememberLazyListState(items.indexOf(selected))
+    LaunchedEffect(selected) {
+        listState.animateScrollToItem(items.indexOf(selected))
+    }
+    Box(
+        Modifier
+            .height(120.dp)
+            .width(70.dp)
+    ) {
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(vertical = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            items(items.size) { idx ->
+                val value = items[idx]
+                Text(
+                    "%02d".format(value),
+                    fontSize = if (value == selected) 32.sp else 20.sp,
+                    fontWeight = if (value == selected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (value == selected) Color.Black else Color(0xFFBBBBBB),
+                    modifier = Modifier
+                        .padding(vertical = 4.dp)
+                        // 클릭 핸들만 잡고 나머지 드래그는 그대로 흘려보냄
+                        .pointerInput(Unit) {
+                            detectTapGestures {
+                                onSelected(value)
+                            }
+                        }
+                )
             }
         }
     }
