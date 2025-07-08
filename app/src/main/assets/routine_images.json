@@ -1,0 +1,44 @@
+[
+  {
+    "routineName": "3대500클럽",
+    "date": "2025-07-06",
+    "imageUri": "file:///android_asset/routine_images/exercise_0706.jpg",
+    "memo": "7월6일테스트"
+  },
+  {
+    "routineName": "3대500클럽",
+    "date": "2025-06-06",
+    "imageUri": "file:///android_asset/routine_images/exercise_0606.jpg",
+    "memo": "6월6일테스트"
+  },
+  {
+    "routineName": "3대500클럽",
+    "date": "2025-06-16",
+    "imageUri": "file:///android_asset/routine_images/exercise_0616.jpg",
+    "memo": "6월16일테스트"
+  },
+  {
+    "routineName": "3대500클럽",
+    "date": "2025-06-17",
+    "imageUri": "file:///android_asset/routine_images/exercise_0617.jpg",
+    "memo": "6월17일테스트"
+  },
+  {
+  "routineName": "3대500클럽",
+  "date": "2025-06-18",
+  "imageUri": "file:///android_asset/routine_images/exercise_0618.jpg",
+  "memo": "6월18일테스트"
+  },
+  {
+  "routineName": "3대500클럽",
+  "date": "2025-07-01",
+  "imageUri": "file:///android_asset/routine_images/exercise_0701.jpg",
+  "memo": "7월1일테스트"
+},
+  {
+    "routineName": "3대500클럽",
+    "date": "2025-07-03",
+    "imageUri": "file:///android_asset/routine_images/exercise_0703.jpg",
+    "memo": "7월3일테스트"
+  }
+]
