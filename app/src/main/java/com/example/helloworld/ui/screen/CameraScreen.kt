@@ -613,7 +613,7 @@ fun RoutineSwiper(
                     .with(slideOutHorizontally { width -> -direction * width } + fadeOut())
             },
             modifier = Modifier
-                .width(280.dp)
+                .width(250.dp)
                 .height(140.dp)
         ) { routine ->
             if (routine != null) {
