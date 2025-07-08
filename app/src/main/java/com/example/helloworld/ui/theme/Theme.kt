@@ -10,6 +10,13 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import com.example.helloworld.R
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.sp
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -33,10 +40,40 @@ private val LightColorScheme = lightColorScheme(
     */
 )
 
+val Paperlogy = FontFamily(
+    Font(R.font.paperlogy_thin, FontWeight.Thin),
+    Font(R.font.paperlogy_light, FontWeight.Light),
+    Font(R.font.paperlogy_medium, FontWeight.Medium),
+    Font(R.font.paperlogy_semibold, FontWeight.SemiBold),
+    Font(R.font.paperlogy_extralight, FontWeight.ExtraLight),
+    Font(R.font.paperlogy_extrabold, FontWeight.ExtraBold),
+    Font(R.font.paperlogy_black, FontWeight.Black),
+    Font(R.font.paperlogy_bold, FontWeight.Bold),
+)
+
+val AppTypography = Typography(
+    bodyLarge = TextStyle(
+        fontFamily = Paperlogy,
+        fontWeight = FontWeight.Bold,
+        fontSize = 20.sp
+    ),
+    titleLarge = TextStyle(
+        fontFamily = Paperlogy,
+        fontWeight = FontWeight.Bold,
+        fontSize = 20.sp
+    ),
+    bodyMedium = TextStyle(
+        fontFamily = Paperlogy,
+        fontWeight = FontWeight.Normal,
+        fontSize = 16.sp
+    ),
+    // ... 이하 생략 ...
+)
+
+
 @Composable
 fun HelloWorldTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
@@ -52,7 +89,7 @@ fun HelloWorldTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = AppTypography,
         content = content
     )
 }
