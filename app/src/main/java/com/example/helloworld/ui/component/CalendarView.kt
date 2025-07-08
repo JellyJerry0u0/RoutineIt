@@ -30,6 +30,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.core.net.toUri
 import coil.request.ImageRequest
 import java.io.File
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.outlined.ChevronLeft
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.clip
 
 @Composable
 fun CalendarView(
@@ -58,32 +63,54 @@ fun CalendarView(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { currentMonth = currentMonth.minusMonths(1) }) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "이전 달")
+                Icon(
+                    imageVector = androidx.compose.material.icons.Icons.Outlined.ChevronLeft,
+                    contentDescription = "이전 달",
+                    tint = Color(0xFFB0B0B0),
+                    modifier = Modifier.size(28.dp)
+                )
             }
             Text(
-                text = "${currentMonth.month.getDisplayName(TextStyle.FULL, Locale.KOREAN)} ${currentMonth.year}",
-                fontSize = 20.sp
+                text = String.format("%04d.%02d", currentMonth.year, currentMonth.monthValue),
+                fontSize = 20.sp,
+                fontFamily = com.example.helloworld.ui.theme.Paperlogy,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF222222),
+                modifier = Modifier.padding(horizontal = 12.dp)
             )
             IconButton(onClick = { currentMonth = currentMonth.plusMonths(1) }) {
-                Icon(Icons.Default.ArrowForward, contentDescription = "다음 달")
+                Icon(
+                    imageVector = androidx.compose.material.icons.Icons.Outlined.ChevronRight,
+                    contentDescription = "다음 달",
+                    tint = Color(0xFFB0B0B0),
+                    modifier = Modifier.size(28.dp)
+                )
             }
         }
 
         // 요일 표시
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
             listOf("일", "월", "화", "수", "목", "금", "토").forEach {
-                Text(it, fontSize = 14.sp, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                Text(
+                    it,
+                    fontSize = 14.sp,
+                    fontFamily = com.example.helloworld.ui.theme.Paperlogy,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFB0B0B0),
+                    modifier = Modifier.weight(1f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
             }
         }
 
         // 날짜 그리드
         Column {
             dates.chunked(7).forEach { originalWeek ->
-                // ✅ 항상 7개의 셀을 만들기 위해 null로 채움
                 val week = if (originalWeek.size < 7) {
                     originalWeek + List(7 - originalWeek.size) { null }
                 } else originalWeek
@@ -95,44 +122,38 @@ fun CalendarView(
                                 .weight(1f)
                                 .aspectRatio(1f)
                                 .padding(4.dp)
-                                .clickable(enabled = date != null) { date?.let(onDateClick) }
+                                .clickable(enabled = date != null) { date?.let(onDateClick) },
+                            contentAlignment = Alignment.Center
                         ) {
                             if (date != null) {
-                                // 1) 해당 날짜의 모든 entry 를 모읍니다.
                                 val allEntriesForDate = routineImages.filter {
                                     LocalDate.parse(it.date) == date &&
                                             it.routineName == selectedRoutine?.name
                                 }
-
-                                // 2) internal/images 폴더에 파일이 실제로 존재하는 entry 를 먼저 선택
                                 val validEntry = allEntriesForDate.firstOrNull { entry ->
-                                    // entry.imageUri 가 "content://.../images/파일명" 이므로
-                                    val fileName = Uri.parse(entry.imageUri).lastPathSegment
-                                    File(context.filesDir, "images/$fileName").exists()
+                                    val fileName = android.net.Uri.parse(entry.imageUri).lastPathSegment
+                                    java.io.File(context.filesDir, "images/$fileName").exists()
                                 }
-                                // 3) 만약 internal 파일이 없는(legacy) 항목만 남았다면, 그냥 첫 항목을 선택
                                 val entryToShow = validEntry ?: allEntriesForDate.firstOrNull()
 
                                 if (entryToShow != null) {
-                                    // 4) 이제 entryToShow 에 맞춰 로드합니다.
-                                    val fileName = Uri.parse(entryToShow.imageUri).lastPathSegment
-                                    val internalFile = File(context.filesDir, "images/$fileName")
+                                    val fileName = android.net.Uri.parse(entryToShow.imageUri).lastPathSegment
+                                    val internalFile = java.io.File(context.filesDir, "images/$fileName")
 
                                     if (internalFile.exists()) {
-                                        // internal 복사본이 있으면 파일로부터 읽기
-                                        AsyncImage(
+                                        coil.compose.AsyncImage(
                                             model = internalFile,
                                             contentDescription = null,
                                             modifier = Modifier
                                                 .fillMaxSize()
                                                 .padding(2.dp)
-                                                .aspectRatio(1f),
-                                            contentScale = ContentScale.Crop
+                                                .aspectRatio(1f)
+                                                .clip(RoundedCornerShape(8.dp)),
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                         )
                                     } else {
-                                        // 복사본이 없으면 직접 URI 로 읽기 (legacy camera URI 등)
-                                        AsyncImage(
-                                            model = ImageRequest.Builder(context)
+                                        coil.compose.AsyncImage(
+                                            model = coil.request.ImageRequest.Builder(context)
                                                 .data(entryToShow.imageUri.toUri())
                                                 .crossfade(true)
                                                 .allowHardware(false)
@@ -141,26 +162,30 @@ fun CalendarView(
                                             modifier = Modifier
                                                 .fillMaxSize()
                                                 .padding(2.dp)
-                                                .aspectRatio(1f),
-                                            contentScale = ContentScale.Crop
+                                                .aspectRatio(1f)
+                                                .clip(RoundedCornerShape(8.dp)),
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                         )
                                     }
                                 } else {
-                                    // 5) 기록이 하나도 없으면 날짜 숫자 표시
                                     Box(
                                         modifier = Modifier.fillMaxSize(),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text(text = date.dayOfMonth.toString(), fontSize = 13.sp)
+                                        Text(
+                                            text = date.dayOfMonth.toString(),
+                                            fontSize = 15.sp,
+                                            fontFamily = com.example.helloworld.ui.theme.Paperlogy,
+                                            fontWeight = FontWeight.Normal,
+                                            color = Color(0xFF222222)
+                                        )
                                     }
                                 }
                             }
                         }
                     }
-
                 }
             }
-
         }
 
     }

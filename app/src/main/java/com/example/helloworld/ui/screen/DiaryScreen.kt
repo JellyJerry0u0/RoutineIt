@@ -30,6 +30,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import com.example.helloworld.ui.component.CalendarView
@@ -53,6 +54,14 @@ import com.example.helloworld.storage.RoutineStorage.loadEntries
 import com.example.helloworld.util.copyRoutineEntriesFromAssetsIfNotExists
 import java.io.File
 import androidx.core.net.toUri
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import com.example.helloworld.ui.theme.Paperlogy
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.SwapHoriz
 
 
 data class RoutineItem(
@@ -139,40 +148,22 @@ fun DiaryScreen() {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = 0.dp) // 상단 여백 최소화
         ) {
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Text(
-                text = "루틴 기록",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
-
-            Spacer(modifier = Modifier.height(15.dp))
-
+            Spacer(Modifier.height(20.dp)) // 루틴 선택 탭을 더 아래로
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(40.dp),
-                horizontalArrangement = Arrangement.Center,
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center, // 중앙 정렬!
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
-                AnimatedHighlighter(text = selectedRoutine?.name ?: "없음")
-
-                Spacer(modifier = Modifier.width(8.dp)) // 텍스트와 아이콘 사이 여백
-                Image(
-                    painter = painterResource(id = R.drawable.ic_setting),
-                    contentDescription = "루틴 선택",
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clickable { showPopup = true }
+                RoutinePill(
+                    routineName = selectedRoutine?.name ?: "",
+                    isDone = true,
+                    onClick = { showPopup = true }
                 )
             }
-
-            Spacer(modifier = Modifier.height(15.dp))
-
+            Spacer(Modifier.height(2.dp)) // 캘린더와의 간격을 줄임
             CalendarView(
                 selectedDate = LocalDate.now(),
                 selectedRoutine = selectedRoutine,
@@ -200,142 +191,208 @@ fun DiaryScreen() {
 
             if (selectedPopupImage != null) {
                 val entry = selectedPopupImage!!
-                // internal/images 에 복사본이 있는지 확인
                 val fileName = Uri.parse(entry.imageUri).lastPathSegment!!
                 val imageFile = File(context.filesDir, "images/$fileName")
+                val imageUrl = if (imageFile.exists()) imageFile else entry.imageUri
+                val parsedDate = try { org.threeten.bp.LocalDate.parse(entry.date) } catch (e: Exception) { null }
+                val formattedDate = parsedDate?.let { it.format(org.threeten.bp.format.DateTimeFormatter.ofPattern("yyyy.MM.dd")) } ?: entry.date
 
                 AlertDialog(
                     onDismissRequest = { selectedPopupImage = null },
-                    title = { Text(text = entry.routineName) },
+                    title = null,
                     text = {
-                        Column {
-                            if (imageFile.exists()) {
-                                // 1) internal 복사본이 있으면 File 모델로 바로 로드
-                                AsyncImage(
-                                    model = imageFile,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(200.dp),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                // 2) 없으면 fallback: content:// URI 로 로드 (with allowHardware(false))
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current)
-                                        .data(entry.imageUri)
-                                        .crossfade(true)
-                                        .allowHardware(false)
-                                        .build(),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(200.dp),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(text = entry.memo)
-                        }
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { selectedPopupImage = null }) {
-                            Text("닫기")
-                        }
-                    }
-                )
-            }
-            if (owners.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "참여자별 보기",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(start = 16.dp)
-                )
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(owners) { owner ->
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
-                                .width(80.dp)
-                                .clickable { selectedOwner = owner }
+                                .background(Color.White, RoundedCornerShape(24.dp))
+                                .padding(0.dp)
                         ) {
-                            // ☆ 네모 박스 & 정사각 썸네일
-                            Box(
-                                modifier = Modifier
-                                    .size(60.dp)
-                                    .background(Color(0xFFEEEEEE), shape = RoundedCornerShape(8.dp))
-                                    .padding(4.dp)
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 24.dp, start = 24.dp, end = 24.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                val avatar = allEntries.first { it.owner == owner }
-                                val fn     = Uri.parse(avatar.imageUri).lastPathSegment!!
-                                val file   = File(context.filesDir, "images/$fn")
-
-                                AsyncImage(
-                                    model        = if (file.exists()) file else Uri.parse(avatar.imageUri),
-                                    contentScale = ContentScale.Crop,
-                                    contentDescription = owner,
-                                    modifier     = Modifier
-                                        .fillMaxSize()
-                                        .clip(RoundedCornerShape(4.dp))
+                                Text(
+                                    formattedDate,
+                                    fontFamily = Paperlogy,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 20.sp,
+                                    color = Color(0xFF222222)
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "닫기",
+                                    tint = Color(0xFF888888),
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clickable { selectedPopupImage = null }
                                 )
                             }
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(Modifier.height(16.dp))
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(180.dp)
+                                    .padding(horizontal = 24.dp)
+                                    .clip(RoundedCornerShape(16.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(64.dp)
+                                    .padding(horizontal = 24.dp)
+                                    .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.White),
+                                contentAlignment = Alignment.TopStart // 좌상단 정렬
+                            ) {
+                                Text(
+                                    entry.memo,
+                                    fontFamily = Paperlogy,
+                                    fontSize = 15.sp,
+                                    color = Color(0xFF888888),
+                                    modifier = Modifier
+                                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                                        .align(Alignment.TopStart), // 좌상단 정렬
+                                    textAlign = TextAlign.Start // 중앙정렬 대신 좌정렬
+                                )
+                            }
+                            Spacer(Modifier.height(24.dp))
+                        }
+                    },
+                    confirmButton = {},
+                    containerColor = Color.Transparent,
+                    shape = RoundedCornerShape(24.dp)
+                )
+            }
+            val today = LocalDate.now().toString()
+            val myRoutineName = selectedRoutine?.name ?: "3대500클럽"
+
+            // 1. 내 피드(실제 데이터)
+            val myFeed = allEntries.find {
+                it.date == today && it.routineName == myRoutineName && it.owner == "내 루틴"
+            }
+
+            // 2. 루틴별 더미 참가자 선정 (중복 허용)
+            // 1. data class 선언을 먼저!
+            data class DummyParticipant(val name: String, val image: String, val memo: String)
+
+            // 2. 그 다음 리스트 생성
+            val dummyParticipants = listOf(
+                DummyParticipant("김철수", "https://randomuser.me/api/portraits/men/10.jpg", "오늘도 화이팅!"),
+                DummyParticipant("이영희", "https://randomuser.me/api/portraits/women/20.jpg", "꾸준함이 답이다."),
+                DummyParticipant("박민수", "https://randomuser.me/api/portraits/men/30.jpg", "운동 끝!"),
+                DummyParticipant("홍길동", "https://randomuser.me/api/portraits/men/40.jpg", "새 루틴 도전!")
+            )
+
+            // 3. 현재 루틴의 더미 참가자
+            val routineParticipants = remember(joinedRoutines) {
+                // 각 루틴마다 2~3명 랜덤 배정
+                joinedRoutines.associate { routine ->
+                    val shuffled = dummyParticipants.shuffled()
+                    val count = (2..3).random()
+                    routine.name to shuffled.take(count)
+                }
+            }
+
+            // 4. 더미 엔트리 생성
+            val currentDummyParticipants = routineParticipants[myRoutineName] ?: emptyList()
+
+            // 5. 피드 리스트: 내 피드(있으면) + 더미 피드
+            val dummyEntries = currentDummyParticipants.map { participant ->
+                RoutineEntry(
+                    routineName = myRoutineName,
+                    date = today,
+                    imageUri = participant.image,
+                    memo = participant.memo,
+                    owner = participant.name
+                )
+            }
+
+            // 6. 피드 리스트: 내 피드(있으면) + 더미 피드
+            val feedEntries = listOfNotNull(myFeed) + dummyEntries
+
+            if (feedEntries.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "참여자 피드",
+                    fontFamily = Paperlogy,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = Color(0xFF222222),
+                    modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
+                )
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(feedEntries) { entry ->
+                        val isSelected = entry.owner == selectedOwner
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .width(120.dp)
+                                .border(
+                                    width = if (isSelected) 2.dp else 1.dp,
+                                    color = if (isSelected) Color(0xFF90B4E6) else Color(0xFFE0E0E0),
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                                .background(Color.White, RoundedCornerShape(16.dp))
+                                .clickable { selectedOwner = entry.owner }
+                                .padding(12.dp)
+                        ) {
+                            AsyncImage(
+                                model = entry.imageUri,
+                                contentDescription = entry.owner,
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                owner,
-                                fontSize  = 12.sp,
+                                entry.owner,
+                                fontFamily = Paperlogy,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = if (isSelected) Color(0xFF90B4E6) else Color(0xFF888888),
                                 textAlign = TextAlign.Center,
-                                color     = if (owner == selectedOwner) Color.Blue else Color.Gray
+                                maxLines = 1
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                entry.memo,
+                                fontFamily = Paperlogy,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 12.sp,
+                                color = Color(0xFF888888),
+                                textAlign = TextAlign.Center,
+                                maxLines = 2
                             )
                         }
                     }
                 }
-
             }
 
 
         }
 
         if (showPopup) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0x88000000)) // 반투명 배경
-                    .clickable { showPopup = false } // 바깥 누르면 닫힘
-            ) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .background(Color.White)
-                        .padding(16.dp)
-                        .width(280.dp)
-                        .heightIn(max = 400.dp)
-                ) {
-                    LazyColumn {
-                        items(joinedRoutines) { routine ->
-                            Text(
-                                text = routine.name,
-                                fontSize = 18.sp,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        selectedRoutine = routine
-                                        showPopup = false
-                                    }
-                                    .padding(12.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-
-
+            RoutineSelectPopup(
+                routines = joinedRoutines,
+                selectedRoutine = selectedRoutine,
+                onSelect = { routine ->
+                    selectedRoutine = routine
+                    showPopup = false
+                },
+                onClose = { showPopup = false }
+            )
         }
 
 
@@ -408,6 +465,142 @@ fun loadJoinedRoutinesFromInternalStorage(context: Context): List<RoutineItem> {
     val type = object : TypeToken<List<RoutineItem>>() {}.type
     return Gson().fromJson<List<RoutineItem>>(json, type)
         .filter { it.isJoined }
+}
+
+@Composable
+fun RoutinePill(
+    routineName: String,
+    isDone: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .background(Color(0xFFF5F8FF), RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .defaultMinSize(minHeight = 32.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = routineName,
+            fontFamily = Paperlogy,
+            fontWeight = FontWeight.Bold, // match popup
+            fontSize = 15.sp, // match popup
+            color = Color(0xFF222222), // match popup
+            maxLines = 1,
+        )
+        if (isDone) {
+            Spacer(Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .background(Color(0xFFA6C8FF), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 10.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "완료",
+                    fontFamily = Paperlogy,
+                    fontWeight = FontWeight.Bold, // match popup
+                    fontSize = 12.sp, // match popup
+                    color = Color.White
+                )
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        Icon(
+            imageVector = Icons.Outlined.SwapHoriz,
+            contentDescription = "루틴 교체",
+            tint = Color(0xFF222A35),
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+@Composable
+fun RoutineSelectPopup(
+    routines: List<RoutineItem>,
+    selectedRoutine: RoutineItem?,
+    onSelect: (RoutineItem) -> Unit,
+    onClose: () -> Unit
+) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0x88000000))
+            .clickable { onClose() }
+    ) {
+        Box(
+            Modifier
+                .align(Alignment.Center)
+                .background(Color.White, RoundedCornerShape(18.dp))
+                .padding(vertical = 18.dp, horizontal = 0.dp)
+                .width(320.dp)
+        ) {
+            Column(Modifier.padding(horizontal = 18.dp)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "오늘의 루틴",
+                        fontFamily = Paperlogy,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Color(0xFF222222)
+                    )
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "닫기",
+                        tint = Color(0xFF888888),
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clickable { onClose() }
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                routines.forEach { routine ->
+                    val isSelected = routine == selectedRoutine
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .background(
+                                if (isSelected) Color(0xFFF5F8FF) else Color(0xFFF7F8FA),
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable { onSelect(routine) }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            routine.name,
+                            fontFamily = Paperlogy,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = if (isSelected) Color(0xFF90B4E6) else Color(0xFF222222),
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (isSelected) {
+                            Box(
+                                Modifier
+                                    .background(Color(0xFFA6C8FF), RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    "완료",
+                                    fontFamily = Paperlogy,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 
