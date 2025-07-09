@@ -1,93 +1,13 @@
 [
-  {
-    "routineName": "3대500클럽",
-    "date": "2025-06-06",
-    "imageUri": "exercise_0606.png",
-    "memo": "테스트!",
-    "owner": "내 루틴"
-  },
-  {
-    "routineName": "3대500클럽",
-    "date": "2025-06-16",
-    "imageUri": "exercise_0616.png",
-    "memo": "테스트!",
-    "owner": "내 루틴"
-  },
-  {
-    "routineName": "3대500클럽",
-    "date": "2025-06-17",
-    "imageUri": "exercise_0617.png",
-    "memo": "메롱!",
-    "owner": "내 루틴"
-  },
-  {
-    "routineName": "3대500클럽",
-    "date": "2025-06-18",
-    "imageUri": "exercise_0618.png",
-    "memo": "야호",
-    "owner": "내 루틴"
-  },
-  {
-    "routineName": "3대500클럽",
-    "date": "2025-07-01",
-    "imageUri": "exercise_0701.png",
-    "memo": "진짜!",
-    "owner": "내 루틴"
-  },
-  {
-    "routineName": "3대500클럽",
-    "date": "2025-07-03",
-    "imageUri": "exercise_0703.png",
-    "memo": "ㅔ메롱",
-    "owner": "내 루틴"
-  },
-  {
-    "routineName": "3대500클럽",
-    "date": "2025-07-06",
-    "imageUri": "exercise_0706.png",
-    "memo": "7월6일",
-    "owner": "내 루틴"
-  },
-  {
-    "routineName": "코딩 연습",
-    "date": "2025-07-06",
-    "imageUri": "coding_0706.png",
-    "memo": "7월6일",
-    "owner": "내 루틴"
-  },
-  {
-    "routineName": "코딩 연습",
-    "date": "2025-07-05",
-    "imageUri": "coding_0705.png",
-    "memo": "7월5일",
-    "owner": "내 루틴"
-  },
-  {
-    "routineName": "코딩 연습",
-    "date": "2025-07-02",
-    "imageUri": "coding_0702.png",
-    "memo": "7월2일",
-    "owner": "내 루틴"
-  },
-  {
-    "routineName": "코딩 연습",
-    "date": "2025-07-01",
-    "imageUri": "kim_coding_0701.jpeg",
-    "memo": "7월1일",
-    "owner": "오늘의 픽"
-  },
-  {
-    "routineName": "코딩 연습",
-    "date": "2025-07-03",
-    "imageUri": "kim_coding_0703.jpeg",
-    "memo": "7월3일",
-    "owner": "오늘의 픽"
-  },
-  {
-    "routineName": "코딩 연습",
-    "date": "2025-07-06",
-    "imageUri": "kim_coding_0706.jpeg",
-    "memo": "7월6일",
-    "owner": "오늘의 픽"
-  }
+  { "routineName": "3대500클럽", "date": "2025-07-02", "imageUri": "dummy1.png", "memo": "박민수 인증!", "owner": "박민수" },
+  { "routineName": "3대500클럽", "date": "2025-07-04", "imageUri": "dummy2.png", "memo": "박민수 인증!", "owner": "박민수" },
+  { "routineName": "3대500클럽", "date": "2025-07-07", "imageUri": "dummy3.png", "memo": "박민수 인증!", "owner": "박민수" },
+  { "routineName": "3대500클럽", "date": "2025-07-09", "imageUri": "dummy4.png", "memo": "박민수 인증!", "owner": "박민수" },
+
+  { "routineName": "3대500클럽", "date": "2025-07-02", "imageUri": "dummy5.png", "memo": "김철수 인증!", "owner": "김철수" },
+  { "routineName": "3대500클럽", "date": "2025-07-04", "imageUri": "dummy6.png", "memo": "김철수 인증!", "owner": "김철수" },
+  { "routineName": "3대500클럽", "date": "2025-07-07", "imageUri": "dummy7.png", "memo": "김철수 인증!", "owner": "김철수" },
+
+  { "routineName": "3대500클럽", "date": "2025-07-02", "imageUri": "dummy8.png", "memo": "이영희 인증!", "owner": "이영희" },
+  { "routineName": "3대500클럽", "date": "2025-07-04", "imageUri": "dummy9.png", "memo": "이영희 인증!", "owner": "이영희" }
 ]

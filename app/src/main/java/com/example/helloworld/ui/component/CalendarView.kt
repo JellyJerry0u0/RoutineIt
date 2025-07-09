@@ -40,11 +40,13 @@ import androidx.compose.ui.draw.clip
 fun CalendarView(
     selectedDate: LocalDate,
     selectedRoutine: com.example.helloworld.ui.screen.RoutineItem?,
-    routineImages: List<RoutineEntry>,
+    routineImages: List<com.example.helloworld.data.RoutineEntry>,
     context: android.content.Context,
-    onDateClick: (LocalDate) -> Unit
+    onDateClick: (LocalDate) -> Unit,
+    currentMonth: YearMonth,
+    onMonthChange: (YearMonth) -> Unit
 ) {
-    var currentMonth by remember { mutableStateOf(YearMonth.now()) }
+    // var currentMonth by remember { mutableStateOf(YearMonth.now()) } // 제거
 
     val startOfMonth = currentMonth.atDay(1)
     val endOfMonth = currentMonth.atEndOfMonth()
@@ -67,7 +69,7 @@ fun CalendarView(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { currentMonth = currentMonth.minusMonths(1) }) {
+            IconButton(onClick = { onMonthChange(currentMonth.minusMonths(1)) }) {
                 Icon(
                     imageVector = androidx.compose.material.icons.Icons.Outlined.ChevronLeft,
                     contentDescription = "이전 달",
@@ -83,7 +85,7 @@ fun CalendarView(
                 color = Color(0xFF222222),
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
-            IconButton(onClick = { currentMonth = currentMonth.plusMonths(1) }) {
+            IconButton(onClick = { onMonthChange(currentMonth.plusMonths(1)) }) {
                 Icon(
                     imageVector = androidx.compose.material.icons.Icons.Outlined.ChevronRight,
                     contentDescription = "다음 달",

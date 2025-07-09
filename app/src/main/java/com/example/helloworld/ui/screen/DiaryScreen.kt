@@ -62,6 +62,8 @@ import com.example.helloworld.ui.theme.Paperlogy
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material3.LinearProgressIndicator
+import org.threeten.bp.YearMonth
 
 
 data class RoutineItem(
@@ -101,6 +103,23 @@ fun DiaryScreen() {
         }
     }
     var selectedOwner by remember { mutableStateOf("내 루틴") }
+
+    // 캘린더에서 보고 있는 월 상태 관리
+    var currentMonth by remember { mutableStateOf(YearMonth.now()) }
+
+    // 진행률 계산을 위한 derived state
+    val monthlyProgress by remember(selectedRoutine, allEntries, currentMonth, selectedOwner) {
+        derivedStateOf {
+            if (selectedRoutine == null) 0f else {
+                calculateMonthlyProgress(selectedRoutine!!, allEntries, currentMonth, selectedOwner)
+            }
+        }
+    }
+    val streak by remember(selectedRoutine, allEntries) {
+        derivedStateOf {
+            if (selectedRoutine == null) 0 else calculateStreak(selectedRoutine!!, allEntries)
+        }
+    }
 
         LaunchedEffect(Unit) {
         RoutineStorage.copyRoutineImagesFromAssetsIfNotExists(context)
@@ -159,10 +178,16 @@ fun DiaryScreen() {
             ) {
                 RoutinePill(
                     routineName = selectedRoutine?.name ?: "",
-                    isDone = true,
+                    isDone = isRoutineDoneToday(selectedRoutine, allEntries),
+                    streak = streak,
                     onClick = { showPopup = true }
                 )
             }
+            
+            // 진행률 바 추가
+            Spacer(Modifier.height(12.dp))
+            MonthlyProgressBar(progress = monthlyProgress, yearMonth = currentMonth)
+            
             Spacer(Modifier.height(2.dp)) // 캘린더와의 간격을 줄임
             CalendarView(
                 selectedDate = LocalDate.now(),
@@ -182,7 +207,9 @@ fun DiaryScreen() {
                     }
                     // 3) 없으면 legacy entry 로
                     selectedPopupImage = preferred ?: entriesForDate.firstOrNull()
-                }
+                },
+                currentMonth = currentMonth,
+                onMonthChange = { newMonth -> currentMonth = newMonth }
             )
 
 
@@ -334,6 +361,7 @@ fun DiaryScreen() {
                 ) {
                     items(feedEntries) { entry ->
                         val isSelected = entry.owner == selectedOwner
+                        val routineItem = joinedRoutines.find { it.name == entry.routineName } ?: selectedRoutine
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
@@ -356,15 +384,25 @@ fun DiaryScreen() {
                                 contentScale = ContentScale.Crop
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                entry.owner,
-                                fontFamily = Paperlogy,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = if (isSelected) Color(0xFF90B4E6) else Color(0xFF888888),
-                                textAlign = TextAlign.Center,
-                                maxLines = 1
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    entry.owner,
+                                    fontFamily = Paperlogy,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = if (isSelected) Color(0xFF90B4E6) else Color(0xFF888888),
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1
+                                )
+                                // 모든 참여자에 대해 스트릭 표시 (entry.routineName 기준)
+                                if (routineItem != null) {
+                                    val ownerStreak = calculateStreak(routineItem, allEntries, entry.owner)
+                                    if (ownerStreak > 0) {
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("🌊$ownerStreak", fontSize = 13.sp, fontWeight = FontWeight.Black, color = Color(0xFF2196F3))
+                                    }
+                                }
+                            }
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 entry.memo,
@@ -391,7 +429,8 @@ fun DiaryScreen() {
                     selectedRoutine = routine
                     showPopup = false
                 },
-                onClose = { showPopup = false }
+                onClose = { showPopup = false },
+                allEntries = allEntries
             )
         }
 
@@ -401,6 +440,126 @@ fun DiaryScreen() {
     }
 }
 
+// 진행률 계산 함수 (yearMonth, owner 기준)
+fun calculateMonthlyProgress(routine: RoutineItem, allEntries: List<RoutineEntry>, yearMonth: YearMonth, owner: String = "내 루틴"): Float {
+    val routineDays = routine.days
+    val startOfMonth = yearMonth.atDay(1)
+    val daysInMonth = (1..yearMonth.lengthOfMonth()).map { day ->
+        startOfMonth.withDayOfMonth(day)
+    }
+    val routineScheduledDays = daysInMonth.filter { date ->
+        val dayOfWeek = when (date.dayOfWeek.value) {
+            1 -> "월"
+            2 -> "화"
+            3 -> "수"
+            4 -> "목"
+            5 -> "금"
+            6 -> "토"
+            7 -> "일"
+            else -> ""
+        }
+        routineDays.contains(dayOfWeek)
+    }
+    val myEntriesThisMonth = allEntries.filter {
+        it.routineName == routine.name &&
+        it.owner == owner &&
+        LocalDate.parse(it.date).month == yearMonth.month &&
+        LocalDate.parse(it.date).year == yearMonth.year
+    }
+    val completedScheduledDays = routineScheduledDays.count { date ->
+        myEntriesThisMonth.any { it.date == date.toString() }
+    }
+    return if (routineScheduledDays.isNotEmpty()) {
+        completedScheduledDays.toFloat() / routineScheduledDays.size
+    } else 0f
+}
+
+// 스트릭 계산 함수
+fun calculateStreak(routine: RoutineItem, allEntries: List<RoutineEntry>, owner: String = "내 루틴"): Int {
+    val routineDays = routine.days
+    val today = LocalDate.now()
+    val startMonth = today.minusMonths(2).withDayOfMonth(1)
+    val endMonth = today.withDayOfMonth(today.lengthOfMonth())
+    val allScheduledDays = mutableListOf<LocalDate>()
+    var date = startMonth
+    while (!date.isAfter(endMonth)) {
+        val dayOfWeek = when (date.dayOfWeek.value) {
+            1 -> "월"
+            2 -> "화"
+            3 -> "수"
+            4 -> "목"
+            5 -> "금"
+            6 -> "토"
+            7 -> "일"
+            else -> ""
+        }
+        if (routineDays.contains(dayOfWeek)) {
+            allScheduledDays.add(date)
+        }
+        date = date.plusDays(1)
+    }
+    val entryDates = allEntries.filter {
+        it.routineName == routine.name && it.owner == owner
+    }.map { LocalDate.parse(it.date) }.toSet()
+    var streak = 0
+    for (scheduled in allScheduledDays.sortedDescending()) {
+        if (scheduled.isAfter(today)) continue
+        if (entryDates.contains(scheduled)) {
+            streak++
+        } else {
+            break
+        }
+    }
+    return streak
+}
+
+// 오늘 해당 루틴을 인증(완료)했는지 판별
+fun isRoutineDoneToday(routine: RoutineItem?, allEntries: List<RoutineEntry>): Boolean {
+    if (routine == null) return false
+    val today = LocalDate.now().toString()
+    return allEntries.any {
+        it.routineName == routine.name && it.owner == "내 루틴" && it.date == today
+    }
+}
+
+@Composable
+fun MonthlyProgressBar(progress: Float, yearMonth: YearMonth) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "${yearMonth.year}년 ${yearMonth.monthValue}월 진행률",
+                fontFamily = Paperlogy,
+                fontSize = 14.sp,
+                color = Color(0xFF888888)
+            )
+            Text(
+                "${(progress * 100).toInt()}%",
+                fontFamily = Paperlogy,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = Color(0xFF90B4E6)
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        LinearProgressIndicator(
+            progress = progress,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp)),
+            color = Color(0xFF90B4E6),
+            trackColor = Color(0xFFF0F0F0)
+        )
+    }
+}
 
 fun loadJoinedRoutinesFromAssets(context: Context): List<RoutineItem> {
     val json = context.assets.open("routines.json").bufferedReader().use { it.readText() }
@@ -471,6 +630,7 @@ fun loadJoinedRoutinesFromInternalStorage(context: Context): List<RoutineItem> {
 fun RoutinePill(
     routineName: String,
     isDone: Boolean,
+    streak: Int = 0,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -506,6 +666,11 @@ fun RoutinePill(
                 )
             }
         }
+        // 스트릭 표시
+        if (streak > 0) {
+            Spacer(Modifier.width(8.dp))
+            Text("🌊$streak", fontSize = 15.sp, fontWeight = FontWeight.Black, color = Color(0xFF2196F3))
+        }
         Spacer(Modifier.width(8.dp))
         Icon(
             imageVector = Icons.Outlined.SwapHoriz,
@@ -521,7 +686,8 @@ fun RoutineSelectPopup(
     routines: List<RoutineItem>,
     selectedRoutine: RoutineItem?,
     onSelect: (RoutineItem) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    allEntries: List<RoutineEntry>
 ) {
     Box(
         Modifier
@@ -561,6 +727,8 @@ fun RoutineSelectPopup(
                 Spacer(Modifier.height(16.dp))
                 routines.forEach { routine ->
                     val isSelected = routine == selectedRoutine
+                    val isDone = isRoutineDoneToday(routine, allEntries)
+                    val streak = calculateStreak(routine, allEntries)
                     Row(
                         Modifier
                             .fillMaxWidth()
@@ -568,6 +736,11 @@ fun RoutineSelectPopup(
                             .background(
                                 if (isSelected) Color(0xFFF5F8FF) else Color(0xFFF7F8FA),
                                 RoundedCornerShape(10.dp)
+                            )
+                            .border(
+                                width = if (isSelected) 2.dp else 0.dp,
+                                color = if (isSelected) Color(0xFF90B4E6) else Color.Transparent,
+                                shape = RoundedCornerShape(10.dp)
                             )
                             .clickable { onSelect(routine) }
                             .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -578,10 +751,10 @@ fun RoutineSelectPopup(
                             fontFamily = Paperlogy,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
-                            color = if (isSelected) Color(0xFF90B4E6) else Color(0xFF222222),
-                            modifier = Modifier.weight(1f)
+                            color = if (isSelected) Color.Black else Color(0xFF222222)
                         )
-                        if (isSelected) {
+                        if (isDone) {
+                            Spacer(Modifier.width(8.dp))
                             Box(
                                 Modifier
                                     .background(Color(0xFFA6C8FF), RoundedCornerShape(8.dp))
@@ -595,6 +768,10 @@ fun RoutineSelectPopup(
                                     color = Color.White
                                 )
                             }
+                        }
+                        Spacer(Modifier.weight(1f))
+                        if (streak > 0) {
+                            Text("🌊$streak", fontSize = 15.sp, fontWeight = FontWeight.Black, color = Color(0xFF2196F3))
                         }
                     }
                 }
