@@ -18,13 +18,15 @@ import androidx.compose.ui.res.painterResource
 import com.example.helloworld.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.text.font.FontWeight
+import com.example.helloworld.ui.theme.Paperlogy
 
 @Composable
 fun BottomNavigationBar(navController: NavController) {
     val items = listOf(
-        BottomNavItem("routine", "루틴", R.drawable.ic_routine_default, R.drawable.ic_routine_selected),
-        BottomNavItem("camera", "인증", R.drawable.ic_camera_default, R.drawable.ic_camera_selected),
-        BottomNavItem("diary", "기록", R.drawable.ic_diary_default, R.drawable.ic_diary_selected)
+        BottomNavItem("routine", "루틴", R.drawable.ic_routine_default_1, R.drawable.ic_routine_selected_1),
+        BottomNavItem("camera", "인증", R.drawable.ic_camera_default_1, R.drawable.ic_camera_selected_1),
+        BottomNavItem("diary", "기록", R.drawable.ic_diary_default_1, R.drawable.ic_diary_selected_1)
     )
 
     NavigationBar(containerColor = Color.White) {
@@ -54,7 +56,9 @@ fun BottomNavigationBar(navController: NavController) {
                     )
                 },
                 label = {
-                    Text(item.label, color = labelColor)
+                    Text(item.label, color = labelColor, fontWeight = FontWeight.Bold,
+                        fontFamily = Paperlogy
+                    )
                 },
                 alwaysShowLabel = true
             )
