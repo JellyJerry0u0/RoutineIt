@@ -87,6 +87,10 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.Dp
+import org.threeten.bp.DayOfWeek
+import org.threeten.bp.LocalTime
+import org.threeten.bp.Duration
+
 
 
 var cameraImageUri: Uri? = null
@@ -105,8 +109,24 @@ fun CameraScreen() {
         }
 
     }
+
+
+
+    var showNotTimeDialog by remember { mutableStateOf(false) }
+
+
+    // routines가 이미 시간 순으로 정렬되어 있으므로, filter만 해 주면 joinedRoutines도 시간순
     val joinedRoutines = routines.filter { it.isJoined }
+
     val selectedRoutine = joinedRoutines.getOrNull(selectedIndex)
+    // 선택된 루틴 시간이 현재 기준 ±10분 내인지
+    fun isNearAuthTime(routine: Routine?): Boolean {
+        routine ?: return false
+        val now = LocalTime.now()
+        val target = parseRoutineTime(routine.time)
+        return Duration.between(now, target).abs().toMinutes() <= 10
+    }
+
     val totalCount = joinedRoutines.size
     var showAlreadyDoneDialog by remember { mutableStateOf(false) }
 
@@ -135,7 +155,7 @@ fun CameraScreen() {
     var entries by remember { mutableStateOf<List<RoutineEntry>>(emptyList()) } // ← 오늘자 인증 기록 로드용 추가
     //var selectedIndex by remember { mutableStateOf(0) }
 
-
+    //var hasAuthTimeState by remember { mutableStateOf(false) }
     var category by remember { mutableStateOf("") }
     var time by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
@@ -144,6 +164,7 @@ fun CameraScreen() {
     LaunchedEffect(Unit) {
         val data = loadJsonFromAssets(context, "routines.json")
         val jsonArray = JSONArray(data)
+        val allRoutines = RoutineRepository.loadRoutinesFromInternal(context)
 
         for (i in 0 until jsonArray.length()) {
             val obj = jsonArray.getJSONObject(i)
@@ -162,10 +183,56 @@ fun CameraScreen() {
 
 
         }
-        routines = RoutineRepository.loadRoutinesFromInternal(context)
+
+        val today = when (LocalDate.now().dayOfWeek) {
+            DayOfWeek.MONDAY    -> "월"
+            DayOfWeek.TUESDAY   -> "화"
+            DayOfWeek.WEDNESDAY -> "수"
+            DayOfWeek.THURSDAY  -> "목"
+            DayOfWeek.FRIDAY    -> "금"
+            DayOfWeek.SATURDAY  -> "토"
+            DayOfWeek.SUNDAY    -> "일"
+        }
+
+        val filtered = allRoutines.filter { routine ->
+            today in routine.days  // routine.days: List<String>
+        }
+        routines = filtered.sortedBy { parseRoutineTime(it.time) }
+
+        //routines = RoutineRepository.loadRoutinesFromInternal(context)
         entries = RoutineStorage
             .loadEntries(context)
             .filter { it.date == LocalDate.now().toString() }
+/*
+        val loaded = RoutineRepository.loadRoutinesFromInternal(context)
+        routines = loaded.sortedBy { parseRoutineTime(it.time) }
+        entries = RoutineStorage
+            .loadEntries(context)
+            .filter { it.date == LocalDate.now().toString() }
+            */
+
+
+        // 2) joinedRoutines 정의
+        val joined = routines.filter { it.isJoined }
+
+        // 3) 현재 시각 계산
+        val now = LocalTime.now()
+
+
+
+        val nearIdx = joined.indexOfFirst { isNearAuthTime(it) }
+        // 없으면 이후 루틴 중 가장 가까운 것
+        val futureIdx = joined.indexOfFirst { parseRoutineTime(it.time).isAfter(now) }
+        selectedIndex = when {
+            nearIdx >= 0   -> nearIdx
+            futureIdx >= 0 -> futureIdx
+            else           -> 0
+        }
+
+
+
+
+
     }
 
     Column(
@@ -200,10 +267,30 @@ fun CameraScreen() {
 
         }
 
+        // 선택된 루틴
+        val selectedRoutine = joinedRoutines.getOrNull(selectedIndex)
+
+// 2) 이미 완료된 루틴인가?
+        val isSelectedDone = selectedRoutine?.let { completedSet.contains(it.name) } == true
+        // 1) 인증 가능 시간대인가?
+        val isSelectedNear = !isSelectedDone && isNearAuthTime(selectedRoutine)
+
+        val now = LocalTime.now()
+// ➋ 지난 루틴 = 인증 가능도 아니고, 완료도 아니면서, 루틴 시간이 이미 지남
+        val isSelectedPast = !isSelectedNear
+                && !isSelectedDone
+                && selectedRoutine
+            ?.let { parseRoutineTime(it.time).isBefore(now) }
+            .orFalse()
+
+
         RoutineSwiper(joinedRoutines = joinedRoutines,
             selectedIndex = selectedIndex,
             onChangeIndex = { selectedIndex = it },
-            completedSet = completedSet
+            //completedSet = completedSet,
+            isNearAuth       = isSelectedNear,   // ← 추가
+            isDone           = isSelectedDone,
+            isPast           = isSelectedPast
         )
 
 
@@ -217,16 +304,16 @@ fun CameraScreen() {
         //Text("오늘의 루틴", fontSize = 20.sp, color = Color.Black, fontWeight = FontWeight.ExtraBold)
 
         Spacer(modifier = Modifier.height(12.dp))
-/*
-        Image(
-            painter = painterResource(id = R.drawable.exercise),
-            contentDescription = "운동 이미지",
-            modifier = Modifier
-                .size(50.dp)
-                .align(Alignment.Start)
-        )
+        /*
+                Image(
+                    painter = painterResource(id = R.drawable.exercise),
+                    contentDescription = "운동 이미지",
+                    modifier = Modifier
+                        .size(50.dp)
+                        .align(Alignment.Start)
+                )
 
- */
+         */
 
         //Spacer(modifier = Modifier.height(40.dp))
 
@@ -245,21 +332,27 @@ fun CameraScreen() {
                 .size(160.dp)
                 .align(Alignment.CenterHorizontally)
                 .clickable {
-                    if (completedSet.contains(selectedRoutine?.name)) {
-                        showAlreadyDoneDialog = true
-                    } else {
+                    when {
+                        completedSet.contains(selectedRoutine?.name) ->
+                            showAlreadyDoneDialog = true
 
-                        if (hasCameraPermission) {
-                            val photoFile = createImageFile(context)
-                            cameraImageUri = FileProvider.getUriForFile(
-                                context,
-                                "${context.packageName}.provider",
-                                photoFile
-                            )
-                            cameraLauncher.launch(cameraImageUri)
-                        } else {
-                            cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                        isNearAuthTime(selectedRoutine) -> {
+                            // 권한 처리 + 카메라 실행
+                            if (hasCameraPermission) {
+                                val photoFile = createImageFile(context)
+                                cameraImageUri = FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.provider",
+                                    photoFile
+                                )
+                                cameraLauncher.launch(cameraImageUri)
+                            } else {
+                                cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                            }
                         }
+
+                        else ->
+                            showNotTimeDialog = true
                     }
                 }
         )
@@ -352,48 +445,48 @@ fun CameraScreen() {
                     modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                Button(
-                    onClick = {
-                        // 저장 로직 …
-                        val srcFileName = cameraImageUri!!.lastPathSegment!!
-                        val imagesDir = File(context.filesDir, "images").apply { if (!exists()) mkdirs() }
-                        val dstFile = File(imagesDir, srcFileName)
-                        context.contentResolver.openInputStream(cameraImageUri!!)?.use { input ->
-                            dstFile.outputStream().use { output -> input.copyTo(output) }
-                        }
-                        val savedUri = FileProvider.getUriForFile(
-                            context, "${context.packageName}.provider", dstFile
+                    Button(
+                        onClick = {
+                            // 저장 로직 …
+                            val srcFileName = cameraImageUri!!.lastPathSegment!!
+                            val imagesDir = File(context.filesDir, "images").apply { if (!exists()) mkdirs() }
+                            val dstFile = File(imagesDir, srcFileName)
+                            context.contentResolver.openInputStream(cameraImageUri!!)?.use { input ->
+                                dstFile.outputStream().use { output -> input.copyTo(output) }
+                            }
+                            val savedUri = FileProvider.getUriForFile(
+                                context, "${context.packageName}.provider", dstFile
+                            )
+                            val entry = RoutineEntry(
+                                routineName = selectedRoutine?.name ?: "unknown",
+                                date = LocalDate.now().toString(),
+                                imageUri = savedUri.toString(),
+                                memo = memo,
+                                owner = "내 루틴"
+                            )
+                            RoutineStorage.addEntry(context, entry)
+                            entries = RoutineStorage.loadEntries(context)
+                                .filter { it.date == LocalDate.now().toString() }
+                            memo = ""
+                            showDialog = false
+                            showSuccessDialog = true
+                            //showDialog = false
+                        },
+                        modifier = Modifier
+                            .width(200.dp)
+                            .height(40.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF72ADFF),
+                            contentColor = Color.White
                         )
-                        val entry = RoutineEntry(
-                            routineName = selectedRoutine?.name ?: "unknown",
-                            date = LocalDate.now().toString(),
-                            imageUri = savedUri.toString(),
-                            memo = memo,
-                            owner = "내 루틴"
-                        )
-                        RoutineStorage.addEntry(context, entry)
-                        entries = RoutineStorage.loadEntries(context)
-                            .filter { it.date == LocalDate.now().toString() }
-                        memo = ""
-                        showDialog = false
-                        showSuccessDialog = true
-                        //showDialog = false
-                    },
-                    modifier = Modifier
-                        .width(200.dp)
-                        .height(40.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF72ADFF),
-                        contentColor = Color.White
-                    )
-                ) {
-                    Text("루틴 인증 등록",
+                    ) {
+                        Text("루틴 인증 등록",
                             fontWeight = FontWeight.SemiBold,
-                        fontFamily = Paperlogy)
+                            fontFamily = Paperlogy)
+                    }
                 }
-            }
-    },
+            },
             // 5) 취소 버튼 제거
             dismissButton = null
 
@@ -469,6 +562,48 @@ fun CameraScreen() {
             showAlreadyDoneDialog = false
         }
     }
+
+    if (showNotTimeDialog) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = null,
+            text = {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        //.fillMaxHeight()
+                        .padding(vertical = 24.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "인증 시간이 아닙니다",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Black,
+                        textAlign = TextAlign.Center,
+                        fontFamily = Paperlogy
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    CrossAnimation(
+                        sizeDp = 48.dp,
+                        strokeWidth = 8f,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                    //Spacer(Modifier.height(16.dp))
+                }
+            },
+            confirmButton = {  },
+            dismissButton = {  },
+            shape = RoundedCornerShape(12.dp),
+            containerColor = Color.White
+        )
+        LaunchedEffect(showNotTimeDialog) {
+            delay(1800)
+            showNotTimeDialog = false
+        }
+    }
+
 
 
 
@@ -569,7 +704,9 @@ fun RoutineSwiper(
     joinedRoutines: List<Routine>,
     selectedIndex: Int,
     onChangeIndex: (Int) -> Unit,
-    completedSet: Set<String>
+    isNearAuth : Boolean,
+    isDone : Boolean,
+    isPast: Boolean
 ) {
     val selectedRoutine = joinedRoutines.getOrNull(selectedIndex)
     val totalCount = joinedRoutines.size
@@ -624,12 +761,11 @@ fun RoutineSwiper(
                         .padding(16.dp)
                 ) {
                     Column {
-                        Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                            if (completedSet.contains(routine.name)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+
+                            if (isDone) {
                                 AnimatedHighlighterCamera(text = routine.name)
-                            }
-                            else {
+                            } else {
                                 Text(
                                     text = routine.name,
                                     fontSize = 18.sp,
@@ -639,23 +775,42 @@ fun RoutineSwiper(
                                 )
                             }
 
-                            if (completedSet.contains(routine.name)) {    // ← 인증된 루틴이면
-                                //Spacer(modifier = Modifier.height(8.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .background(Color(0xFFD6E6FF), RoundedCornerShape(8.dp))
-                                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = "완료",
-                                        fontFamily = Paperlogy,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp,
-                                        color = Color(0xFF90B4E6)
-                                    )
+                            Spacer(Modifier.width(6.dp))
+
+                            when {
+                                isDone -> {
+                                    Box(
+                                        modifier = Modifier
+                                            .background(Color(0xFFD6E6FF), RoundedCornerShape(8.dp))
+                                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "완료",
+                                            fontFamily = Paperlogy,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp,
+                                            color = Color(0xFF90B4E6)
+                                        )
+                                    }
+                                }
+                                isNearAuth -> {
+                                    Box(
+                                        modifier = Modifier
+                                            .background(Color(0xFFD6E6FF), RoundedCornerShape(8.dp))
+                                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "인증 가능!",
+                                            fontFamily = Paperlogy,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp,
+                                            color = Color(0xFF90B4E6)
+                                        )
+                                    }
                                 }
                             }
                         }
+
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = routine.description,
@@ -663,6 +818,23 @@ fun RoutineSwiper(
                             fontSize = 14.sp,
                             color = Color.DarkGray,
                             maxLines = 3
+                        )
+
+
+                    }
+
+                    //
+                    if (!isNearAuth && !isDone) {
+                        val label = if (isPast) "지난 루틴" else "다가오는 루틴"
+                        Text(
+                            text = label,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Gray,
+                            fontFamily = Paperlogy,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = 8.dp, bottom = 8.dp)
                         )
                     }
                 }
@@ -815,3 +987,100 @@ fun CheckmarkAnimation(
 
 // lerp helper
 private fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
+private fun Boolean?.orFalse() = this == true
+
+
+private fun parseRoutineTime(timeStr: String): LocalTime {
+    val parts = timeStr.split(" ")
+    val ampm = parts[0]
+    val (h, m) = parts[1].split(":").let { it[0].toInt() to it[1].toInt() }
+    var hour = h
+    if (ampm == "오후" && hour < 12) hour += 12
+    if (ampm == "오전" && hour == 12) hour = 0
+    return LocalTime.of(hour, m)
+}
+
+
+@Composable
+fun CrossAnimation(
+    modifier: Modifier = Modifier,
+    sizeDp: Dp = 48.dp,
+    strokeWidth: Float = 8f,
+    color: Color = Color(0xFFFF7272)
+) {
+    // 0f → 1f : 원, 1f → 2f : 가위표(X)
+    val progress = remember { Animatable(0f) }
+
+    LaunchedEffect(Unit) {
+        progress.animateTo(1f, animationSpec = tween(600))
+        delay(200)
+        progress.animateTo(2f, animationSpec = tween(600))
+    }
+
+    Canvas(modifier = modifier.size(sizeDp)) {
+        val w = size.width
+        val h = size.height
+
+        if (progress.value <= 1f) {
+            drawArc(
+                color = color,
+                startAngle = -90f,
+                sweepAngle = 360f * progress.value,
+                useCenter = false,
+                style = Stroke(width = strokeWidth)
+            )
+        } else {
+            // 완전한 원
+            drawCircle(
+                color = color,
+                radius = w.coerceAtMost(h) / 2f,
+                style = Stroke(width = strokeWidth)
+            )
+
+            // X 그리기
+            val t = (progress.value - 1f).coerceIn(0f, 1f)
+            val start1 = Offset(x = w * 0.25f, y = h * 0.25f)
+            val end1 = Offset(x = w * 0.75f, y = h * 0.75f)
+            val start2 = Offset(x = w * 0.75f, y = h * 0.25f)
+            val end2 = Offset(x = w * 0.25f, y = h * 0.75f)
+
+            if (t < 0.5f) {
+                // 첫 번째 대각선
+                val tt = t / 0.5f
+                val currentEnd = Offset(
+                    lerp(start1.x, end1.x, tt),
+                    lerp(start1.y, end1.y, tt)
+                )
+                drawLine(
+                    color = color,
+                    start = start1,
+                    end = currentEnd,
+                    strokeWidth = strokeWidth
+                )
+            } else {
+                // 첫 번째 대각선 완성
+                drawLine(
+                    color = color,
+                    start = start1,
+                    end = end1,
+                    strokeWidth = strokeWidth
+                )
+                // 두 번째 대각선
+                val tt = (t - 0.5f) / 0.5f
+                val currentEnd = Offset(
+                    lerp(start2.x, end2.x, tt),
+                    lerp(start2.y, end2.y, tt)
+                )
+                drawLine(
+                    color = color,
+                    start = start2,
+                    end = currentEnd,
+                    strokeWidth = strokeWidth
+                )
+            }
+        }
+    }
+}
+
+// lerp helper
+//private fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
